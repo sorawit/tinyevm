@@ -5,7 +5,7 @@ use crate::database::Database;
 
 pub struct State<DB> {
     db: DB,
-    cache: HashMap<U256, U256>, // TODO: More optimize?
+    cache: HashMap<U256, U256>, // TODO: More optimization?
 }
 
 impl<DB: Database> State<DB> {

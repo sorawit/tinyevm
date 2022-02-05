@@ -26,7 +26,11 @@ impl Database for MemoryDatabase {
     }
 
     fn set(&mut self, key: U256, value: U256) {
-        self.db.insert(key, value);
+        if value == U256::default() {
+            self.db.remove(&key);
+        } else {
+            self.db.insert(key, value);
+        }
     }
 }
 
@@ -49,5 +53,7 @@ mod tests {
         db.set(123.into(), 789.into());
         assert_eq!(db.get(123.into()), 789.into());
         assert_eq!(db.get(124.into()), 0.into());
+        db.set(123.into(), 0.into());
+        assert_eq!(db.get(123.into()), 0.into());
     }
 }
