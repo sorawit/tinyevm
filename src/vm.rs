@@ -30,7 +30,7 @@ impl<'a, DB: Database> VM<'a, DB> {
         };
         loop {
             let opcode = self.code[rt.pc];
-            // println!("opcode {} 0x{:x}", rt.pc, opcode);
+            // println!("opcode {} 0x{:x} {:?}", rt.pc, opcode, rt.stk);
             match opcode {
                 0x01 => {
                     // ADD
@@ -104,6 +104,11 @@ impl<'a, DB: Database> VM<'a, DB> {
                     rt.stk.push(U256::from_big_endian(slice));
                     rt.pc += 1
                 }
+                0x56 => {
+                    // JUMP
+                    let loc = rt.stk.pop().unwrap().as_usize();
+                    rt.pc = loc
+                }
                 0x57 => {
                     // JUMPI
                     let loc = rt.stk.pop().unwrap().as_usize();
@@ -125,6 +130,13 @@ impl<'a, DB: Database> VM<'a, DB> {
                     rt.stk.push(value);
                     rt.pc += 2
                 }
+                0x62 => {
+                    // PUSH3
+                    let slice = &self.code[rt.pc + 1..rt.pc + 4];
+                    let value = U256::from_big_endian(slice);
+                    rt.stk.push(value);
+                    rt.pc += 4
+                }
                 0x63 => {
                     // PUSH4
                     let slice = &self.code[rt.pc + 1..rt.pc + 5];
@@ -138,6 +150,7 @@ impl<'a, DB: Database> VM<'a, DB> {
                     let value = rt.stk.pop().unwrap();
                     rt.mem.resize(1024, 0); // TODO: Make it proper
                     value.to_big_endian(&mut rt.mem[key..key + 32]);
+                    println!("{:x}, {:?}", rt.pc, value);
                     rt.pc += 1
                 }
                 0x80 => {
@@ -148,6 +161,11 @@ impl<'a, DB: Database> VM<'a, DB> {
                 0x81 => {
                     // DUP2
                     rt.stk.push(rt.stk[rt.stk.len() - 2]);
+                    rt.pc += 1
+                }
+                0x82 => {
+                    // DUP3
+                    rt.stk.push(rt.stk[rt.stk.len() - 3]);
                     rt.pc += 1
                 }
                 0x90 => {
@@ -162,6 +180,17 @@ impl<'a, DB: Database> VM<'a, DB> {
                     rt.stk.swap(len - 1, len - 3);
                     rt.pc += 1
                 }
+                0x1B => {
+                    // SHL
+                    let shift = rt.stk.pop().unwrap();
+                    let value = rt.stk.pop().unwrap();
+                    if shift >= 256.into() {
+                        rt.stk.push(0.into());
+                    } else {
+                        rt.stk.push(value << shift.as_u64());
+                    }
+                    rt.pc += 1
+                }
                 0x1C => {
                     // SHR
                     let shift = rt.stk.pop().unwrap();
@@ -171,7 +200,7 @@ impl<'a, DB: Database> VM<'a, DB> {
                     } else {
                         rt.stk.push(value >> shift.as_u64());
                     }
-                    rt.pc += 2
+                    rt.pc += 1
                 }
                 0xF3 => {
                     // RETURN
