@@ -135,6 +135,18 @@ fn handle_0x56_jump<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x57_jumpi<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let loc = ctx.stack.pop_usize()?;
+    let cond = ctx.stack.pop_u256()?;
+    ctx.pc = if cond.is_zero() { ctx.pc + 1 } else { loc };
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x5b_jumpdest<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x60_push<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
     let slice = &ctx.code[ctx.pc + 1..ctx.pc + N + 1];
     let value = U256::from_big_endian(slice);
@@ -208,6 +220,8 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x54 => handle_0x54_sload(self),
             0x55 => handle_0x55_sstore(self),
             0x56 => handle_0x56_jump(self),
+            0x57 => handle_0x57_jumpi(self),
+            0x5b => handle_0x5b_jumpdest(self),
             0x60 => handle_0x60_push::<_, 1>(self),
             0x61 => handle_0x60_push::<_, 2>(self),
             0x62 => handle_0x60_push::<_, 3>(self),
@@ -284,22 +298,6 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
                     }
                 }
                 self.stack.push_u256(U256::from_big_endian(&rawdata))?;
-                self.pc += 1;
-                Ok(OpStep::Continue)
-            }
-            0x57 => {
-                // JUMPI
-                let loc = self.stack.pop_usize()?;
-                let cond = self.stack.pop_u256()?;
-                if cond.is_zero() {
-                    self.pc += 1;
-                } else {
-                    self.pc = loc;
-                }
-                Ok(OpStep::Continue)
-            }
-            0x5B => {
-                // JUMPDEST
                 self.pc += 1;
                 Ok(OpStep::Continue)
             }
