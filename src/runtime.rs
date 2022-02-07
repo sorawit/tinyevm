@@ -26,7 +26,7 @@ pub enum OpStep {
 type OpResult = Result<OpStep, Error>;
 
 fn handle_0x00_stop<DB>(_ctx: &mut Runtime<DB>) -> OpResult {
-    Ok(OpStep::Revert(Vec::new()))
+    Ok(OpStep::Return(Vec::new()))
 }
 
 fn handle_0x01_add<DB>(ctx: &mut Runtime<DB>) -> OpResult {
@@ -72,6 +72,13 @@ fn handle_0x14_eq<DB>(ctx: &mut Runtime<DB>) -> OpResult {
 fn handle_0x15_iszero<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     let value = ctx.stack.pop_u256()?;
     ctx.stack.push_usize(if value.is_zero() { 1 } else { 0 })?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x19_not<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let value = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(!value)?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -265,6 +272,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x10 => handle_0x10_lt(self),
             0x14 => handle_0x14_eq(self),
             0x15 => handle_0x15_iszero(self),
+            0x19 => handle_0x19_not(self),
             0x1b => handle_0x1b_shl(self),
             0x1c => handle_0x1c_shr(self),
             0x20 => handle_0x20_keccak256(self),
