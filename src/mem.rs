@@ -28,13 +28,13 @@ impl Mem {
     /// Stores the given value to the location at the specified key.
     pub fn mstore(&mut self, key: usize, value: U256) -> Result<(), Error> {
         self.resize_for(key)?;
-        Ok(value.to_big_endian(&mut self.0[key..key + 32]))
+        Ok(value.to_big_endian(&mut self.0[key..key + WORD_SIZE]))
     }
 
     /// Loads the value from the location at the specified key.
     pub fn mload(&mut self, key: usize) -> Result<U256, Error> {
         self.resize_for(key)?;
-        let slice = &self.0[key..key + 32];
+        let slice = &self.0[key..key + WORD_SIZE];
         Ok(U256::from_big_endian(slice))
     }
 
