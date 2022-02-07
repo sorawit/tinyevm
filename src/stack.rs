@@ -1,5 +1,5 @@
 use crate::error::Error;
-use ethereum_types::U256;
+use ethereum_types::{BigEndianHash, H256, U256};
 
 const MAX_SIZE: usize = 1024;
 
@@ -14,6 +14,11 @@ impl Stack {
     /// Pushes a new usize value to the stack.
     pub fn push_usize(&mut self, value: usize) -> Result<(), Error> {
         self.push_u256(value.into())
+    }
+
+    /// Pushes a new h256 value to the stack.
+    pub fn push_h256(&mut self, value: H256) -> Result<(), Error> {
+        self.push_u256(value.into_uint())
     }
 
     /// Pushes a new u256 value to the stack.

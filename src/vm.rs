@@ -1,8 +1,7 @@
-use ethereum_types::{Address, U256};
-
 use crate::database::Database;
 use crate::runtime::Runtime;
 use crate::state::State;
+use ethereum_types::Address;
 
 pub struct VM<'a, DB> {
     code: &'a [u8],
