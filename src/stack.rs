@@ -50,7 +50,7 @@ impl Stack {
         // TODO: Asserts N <= 32 at compile time
         if self.0.len() >= N {
             let len = self.0.len();
-            Ok(self.0.push(self.0[len - N]))
+            self.push_u256(self.0[len - N])
         } else {
             Err(Error::StackUnderflow)
         }
