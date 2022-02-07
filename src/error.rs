@@ -1,6 +1,6 @@
 #[derive(PartialEq, Debug)]
 pub enum Error {
-    InvalidOpcode,
+    InvalidOpcode(u8),
     StackOverflow,
     StackUnderflow,
     StackValueOutOfRange,

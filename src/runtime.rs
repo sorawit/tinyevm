@@ -1,4 +1,5 @@
-use ethereum_types::{Address, U256};
+use ethereum_types::{Address, H256, U256};
+use sha3::{Digest, Keccak256};
 
 use crate::database::Database;
 use crate::error::Error;
@@ -91,6 +92,15 @@ fn handle_0x1c_shr<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x20_keccak256<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let start = ctx.stack.pop_usize()?;
+    let len = ctx.stack.pop_usize()?;
+    let res = Keccak256::digest(ctx.mem.mview(start, len)?);
+    ctx.stack.push_h256(H256::from_slice(&res))?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x33_caller<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     ctx.stack.push_h256(ctx.caller.into())?;
     ctx.pc += 1;
@@ -130,8 +140,8 @@ fn handle_0x50_pop<DB>(ctx: &mut Runtime<DB>) -> OpResult {
 }
 
 fn handle_0x51_mload<DB>(ctx: &mut Runtime<DB>) -> OpResult {
-    let loc = ctx.stack.pop_usize()?;
-    ctx.stack.push_u256(ctx.mem.mload(loc)?)?;
+    let key = ctx.stack.pop_usize()?;
+    ctx.stack.push_u256(ctx.mem.mload(key)?)?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -226,12 +236,13 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             stack: Stack::new(),
         };
     }
+
     pub fn run(&mut self) {
         loop {
             // TODO: check self.pc bound
             let opcode = self.code[self.pc];
             match self.next(opcode) {
-                Err(_) => panic!("error"),
+                Err(err) => panic!("error {:?}", err),
                 Ok(OpStep::Continue) => (),
                 Ok(OpStep::Return(v)) => {
                     println!("Return {:?}", v);
@@ -245,7 +256,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
         }
     }
 
-    pub fn next(&mut self, opcode: u8) -> OpResult {
+    fn next(&mut self, opcode: u8) -> OpResult {
         match opcode {
             0x00 => handle_0x00_stop(self),
             0x01 => handle_0x01_add(self),
@@ -256,6 +267,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x15 => handle_0x15_iszero(self),
             0x1b => handle_0x1b_shl(self),
             0x1c => handle_0x1c_shr(self),
+            0x20 => handle_0x20_keccak256(self),
             0x33 => handle_0x33_caller(self),
             0x34 => handle_0x34_callvalue(self),
             0x35 => handle_0x35_calldataload(self),
@@ -334,7 +346,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x9f => handle_0x90_swap::<_, 16>(self),
             0xf3 => handle_0xf3_return(self),
             0xfd => handle_0xfd_revert(self),
-            _ => panic!("unknown opcode 0x{:x}", opcode),
+            _ => Err(Error::InvalidOpcode(opcode)),
         }
     }
 }
