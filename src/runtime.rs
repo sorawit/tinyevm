@@ -75,6 +75,22 @@ fn handle_0x15_iszero<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x1b_shl<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let shift = ctx.stack.pop_u256()?;
+    let value = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(value << shift)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x1c_shr<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let shift = ctx.stack.pop_u256()?;
+    let value = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(value >> shift)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x33_caller<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     ctx.stack.push_h256(ctx.caller.into())?;
     ctx.pc += 1;
@@ -83,6 +99,20 @@ fn handle_0x33_caller<DB>(ctx: &mut Runtime<DB>) -> OpResult {
 
 fn handle_0x34_callvalue<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     ctx.stack.push_usize(0)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x35_calldataload<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let loc = ctx.stack.pop_usize()?;
+    // TODO: Make it better
+    let mut rawdata = [0u8; 32];
+    for idx in 0..32 {
+        if loc + idx < ctx.data.len() {
+            rawdata[idx] = ctx.data[loc + idx];
+        }
+    }
+    ctx.stack.push_u256(U256::from_big_endian(&rawdata))?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -167,6 +197,18 @@ fn handle_0x90_swap<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0xf3_return<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let start = ctx.stack.pop_usize()?;
+    let len = ctx.stack.pop_usize()?;
+    Ok(OpStep::Return(ctx.mem.mview(start, len)?.to_vec()))
+}
+
+fn handle_0xfd_revert<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let start = ctx.stack.pop_usize()?;
+    let len = ctx.stack.pop_usize()?;
+    Ok(OpStep::Revert(ctx.mem.mview(start, len)?.to_vec()))
+}
+
 impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
     pub fn new(
         code: &'a [u8],
@@ -186,6 +228,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
     }
     pub fn run(&mut self) {
         loop {
+            // TODO: check self.pc bound
             let opcode = self.code[self.pc];
             match self.next(opcode) {
                 Err(_) => panic!("error"),
@@ -211,8 +254,11 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x10 => handle_0x10_lt(self),
             0x14 => handle_0x14_eq(self),
             0x15 => handle_0x15_iszero(self),
+            0x1b => handle_0x1b_shl(self),
+            0x1c => handle_0x1c_shr(self),
             0x33 => handle_0x33_caller(self),
             0x34 => handle_0x34_callvalue(self),
+            0x35 => handle_0x35_calldataload(self),
             0x36 => handle_0x36_calldatasize(self),
             0x50 => handle_0x50_pop(self),
             0x51 => handle_0x51_mload(self),
@@ -286,57 +332,8 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x9d => handle_0x90_swap::<_, 14>(self),
             0x9e => handle_0x90_swap::<_, 15>(self),
             0x9f => handle_0x90_swap::<_, 16>(self),
-
-            0x35 => {
-                // CALLDATALOAD
-                let loc = self.stack.pop_usize()?;
-                // TODO: Make it better
-                let mut rawdata = [0u8; 32];
-                for idx in 0..32 {
-                    if loc + idx < self.data.len() {
-                        rawdata[idx] = self.data[loc + idx];
-                    }
-                }
-                self.stack.push_u256(U256::from_big_endian(&rawdata))?;
-                self.pc += 1;
-                Ok(OpStep::Continue)
-            }
-            0x1B => {
-                // SHL
-                let shift = self.stack.pop_u256()?;
-                let value = self.stack.pop_u256()?;
-                if shift >= 256.into() {
-                    self.stack.push_usize(0)?;
-                } else {
-                    self.stack.push_u256(value << shift.as_u64())?;
-                }
-                self.pc += 1;
-                Ok(OpStep::Continue)
-            }
-            0x1C => {
-                // SHR
-                let shift = self.stack.pop_u256()?;
-                let value = self.stack.pop_u256()?;
-                if shift >= 256.into() {
-                    self.stack.push_usize(0)?;
-                } else {
-                    self.stack.push_u256(value >> shift.as_u64())?;
-                }
-                self.pc += 1;
-                Ok(OpStep::Continue)
-            }
-            0xF3 => {
-                // RETURN
-                let start = self.stack.pop_usize()?;
-                let len = self.stack.pop_usize()?;
-                Ok(OpStep::Return(self.mem.mview(start, len)?.to_vec()))
-            }
-            0xFD => {
-                // REVERT
-                let start = self.stack.pop_usize()?;
-                let len = self.stack.pop_usize()?;
-                Ok(OpStep::Revert(self.mem.mview(start, len)?.to_vec()))
-            }
+            0xf3 => handle_0xf3_return(self),
+            0xfd => handle_0xfd_revert(self),
             _ => panic!("unknown opcode 0x{:x}", opcode),
         }
     }
