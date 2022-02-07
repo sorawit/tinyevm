@@ -12,7 +12,6 @@ pub struct Runtime<'a, 'b, DB> {
     data: &'b [u8],
     caller: Address,
     pc: usize,
-
     mem: Mem,
     stack: Stack,
 }
@@ -107,6 +106,14 @@ fn handle_0x51_mload<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x52_mstore<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+    let key = ctx.stack.pop_usize()?;
+    let value = ctx.stack.pop_u256()?;
+    ctx.mem.mstore(key, value)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x54_sload<DB: Database>(ctx: &mut Runtime<DB>) -> OpResult {
     let key = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(ctx.state.load(key))?;
@@ -138,6 +145,12 @@ fn handle_0x60_push<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
 
 fn handle_0x80_dup<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
     ctx.stack.dup::<N>()?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x90_swap<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
+    ctx.stack.swap::<N>()?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -191,6 +204,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x36 => handle_0x36_calldatasize(self),
             0x50 => handle_0x50_pop(self),
             0x51 => handle_0x51_mload(self),
+            0x52 => handle_0x52_mstore(self),
             0x54 => handle_0x54_sload(self),
             0x55 => handle_0x55_sstore(self),
             0x56 => handle_0x56_jump(self),
@@ -242,6 +256,22 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x8d => handle_0x80_dup::<_, 14>(self),
             0x8e => handle_0x80_dup::<_, 15>(self),
             0x8f => handle_0x80_dup::<_, 16>(self),
+            0x90 => handle_0x90_swap::<_, 1>(self),
+            0x91 => handle_0x90_swap::<_, 2>(self),
+            0x92 => handle_0x90_swap::<_, 3>(self),
+            0x93 => handle_0x90_swap::<_, 4>(self),
+            0x94 => handle_0x90_swap::<_, 5>(self),
+            0x95 => handle_0x90_swap::<_, 6>(self),
+            0x96 => handle_0x90_swap::<_, 7>(self),
+            0x97 => handle_0x90_swap::<_, 8>(self),
+            0x98 => handle_0x90_swap::<_, 9>(self),
+            0x99 => handle_0x90_swap::<_, 10>(self),
+            0x9a => handle_0x90_swap::<_, 11>(self),
+            0x9b => handle_0x90_swap::<_, 12>(self),
+            0x9c => handle_0x90_swap::<_, 13>(self),
+            0x9d => handle_0x90_swap::<_, 14>(self),
+            0x9e => handle_0x90_swap::<_, 15>(self),
+            0x9f => handle_0x90_swap::<_, 16>(self),
 
             0x35 => {
                 // CALLDATALOAD
@@ -270,26 +300,6 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             }
             0x5B => {
                 // JUMPDEST
-                self.pc += 1;
-                Ok(OpStep::Continue)
-            }
-            0x52 => {
-                // MSTORE
-                let key = self.stack.pop_usize()?;
-                let value = self.stack.pop_u256()?;
-                self.mem.mstore(key, value)?;
-                self.pc += 1;
-                Ok(OpStep::Continue)
-            }
-            0x90 => {
-                // SWAP1
-                self.stack.swap::<1>()?;
-                self.pc += 1;
-                Ok(OpStep::Continue)
-            }
-            0x91 => {
-                // SWAP2
-                self.stack.swap::<2>()?;
                 self.pc += 1;
                 Ok(OpStep::Continue)
             }
