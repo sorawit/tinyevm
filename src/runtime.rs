@@ -2,6 +2,7 @@ use ethereum_types::{Address, U256};
 
 use crate::database::Database;
 use crate::error::Error;
+use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;
 
@@ -11,7 +12,8 @@ pub struct Runtime<'a, 'b, DB> {
     data: &'b [u8],
     caller: Address,
     pc: usize,
-    mem: Vec<u8>,
+
+    mem: Mem,
     stack: Stack,
 }
 
@@ -34,7 +36,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             data,
             caller,
             pc: 0,
-            mem: Vec::with_capacity(1024),
+            mem: Mem::new(),
             stack: Stack::new(),
         };
     }
@@ -126,8 +128,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
             0x51 => {
                 // MLOAD
                 let loc = self.stack.pop_usize()?;
-                let slice = &self.mem[loc..loc + 32];
-                self.stack.push_u256(U256::from_big_endian(slice))?;
+                self.stack.push_u256(self.mem.mload(loc)?)?;
                 self.pc += 1;
                 Ok(OpResult::Continue)
             }
@@ -181,9 +182,7 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
                 // MSTORE
                 let key = self.stack.pop_usize()?;
                 let value = self.stack.pop_u256()?;
-                self.mem.resize(1024, 0); // TODO: Make it proper
-                value.to_big_endian(&mut self.mem[key..key + 32]);
-                // println!("{:x}, {:?}", self.pc, value);
+                self.mem.mstore(key, value)?;
                 self.pc += 1;
                 Ok(OpResult::Continue)
             }
@@ -245,14 +244,14 @@ impl<'a, 'b, DB: Database> Runtime<'a, 'b, DB> {
                 // RETURN
                 let start = self.stack.pop_usize()?;
                 let len = self.stack.pop_usize()?;
-                println!("RETURN {:?}", &self.mem[start..start + len]);
+                println!("RETURN {:?}", &self.mem.mview(start, len)?);
                 Ok(OpResult::Return)
             }
             0xFD => {
                 // REVERT
                 let start = self.stack.pop_usize()?;
                 let len = self.stack.pop_usize()?;
-                println!("RETURN {:?}", &self.mem[start..start + len]);
+                println!("REVERT {:?}", &self.mem.mview(start, len)?);
                 Ok(OpResult::Revert)
             }
             _ => panic!("unknown opcode 0x{:x}", opcode),
