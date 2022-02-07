@@ -4,4 +4,6 @@ pub enum Error {
     StackOverflow,
     StackUnderflow,
     StackValueOutOfRange,
+    MemoryOverflow,
+    MemoryOutOfBound,
 }
