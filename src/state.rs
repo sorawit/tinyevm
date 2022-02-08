@@ -1,7 +1,6 @@
+use crate::database::Database;
 use ethereum_types::U256;
 use std::collections::HashMap;
-
-use crate::database::Database;
 
 pub struct State<DB> {
     db: DB,

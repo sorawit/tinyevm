@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::types::Error;
 use ethereum_types::{BigEndianHash, H256, U256};
 
 const MAX_SIZE: usize = 1024;

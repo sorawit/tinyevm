@@ -1,9 +1,9 @@
 mod database;
-mod error;
 mod mem;
 mod runtime;
 mod stack;
 mod state;
+mod types;
 mod vm;
 
 use ethereum_types::Address;

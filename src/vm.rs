@@ -17,6 +17,14 @@ impl<'a, DB: Database> VM<'a, DB> {
     }
 
     pub fn run(&mut self, caller: Address, data: &[u8]) {
-        runtime::run(self.code, &mut self.state, data, caller);
+        println!(
+            "{:?}",
+            runtime::run(self.code, &mut self.state, data, caller)
+        );
+    }
+
+    pub fn call(&mut self, caller: Address, data: &[u8]) {
+        let _ = runtime::run(self.code, &mut self.state, data, caller);
+        self.state.rollback();
     }
 }

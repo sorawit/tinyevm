@@ -2,12 +2,12 @@ use ethereum_types::{Address, H256, U256};
 use sha3::{Digest, Keccak256};
 
 use crate::database::Database;
-use crate::error::Error;
 use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;
+use crate::types::{Error, OpResult, OpStep, RunResult};
 
-pub struct Runtime<'a, 'b, DB> {
+struct Runtime<'a, 'b, DB> {
     code: &'a [u8],
     state: &'b mut State<DB>,
     data: &'b [u8],
@@ -16,14 +16,6 @@ pub struct Runtime<'a, 'b, DB> {
     mem: Mem,
     stack: Stack,
 }
-
-pub enum OpStep {
-    Continue,
-    Return(Vec<u8>),
-    Revert(Vec<u8>),
-}
-
-type OpResult = Result<OpStep, Error>;
 
 fn handle_0x00_stop<DB>(_ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Return(Vec::new()))
@@ -195,11 +187,15 @@ fn handle_0x5b_jumpdest<DB>(ctx: &mut Runtime<DB>) -> OpResult {
 }
 
 fn handle_0x60_push<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
-    let slice = &ctx.code[ctx.pc + 1..ctx.pc + N + 1];
-    let value = U256::from_big_endian(slice);
-    ctx.stack.push_u256(value)?;
-    ctx.pc += N + 1;
-    Ok(OpStep::Continue)
+    if N < ctx.code.len() - ctx.pc {
+        let slice = &ctx.code[ctx.pc + 1..ctx.pc + N + 1];
+        let value = U256::from_big_endian(slice);
+        ctx.stack.push_u256(value)?;
+        ctx.pc += N + 1;
+        Ok(OpStep::Continue)
+    } else {
+        Err(Error::CodeOutOfBound)
+    }
 }
 
 fn handle_0x80_dup<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
@@ -223,42 +219,10 @@ fn handle_0xf3_return<DB>(ctx: &mut Runtime<DB>) -> OpResult {
 fn handle_0xfd_revert<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     let start = ctx.stack.pop_usize()?;
     let len = ctx.stack.pop_usize()?;
-    Ok(OpStep::Revert(ctx.mem.mview(start, len)?.to_vec()))
+    Err(Error::Revert(ctx.mem.mview(start, len)?.to_vec()))
 }
 
-pub fn run<'a, 'b, DB: Database>(
-    code: &'a [u8],
-    state: &'b mut State<DB>,
-    data: &'b [u8],
-    caller: Address,
-) {
-    let mut ctx = Runtime {
-        code,
-        state,
-        data,
-        caller,
-        pc: 0,
-        mem: Mem::new(),
-        stack: Stack::new(),
-    };
-    loop {
-        // TODO: check ctx.pc bound
-        match next(&mut ctx) {
-            Err(err) => panic!("error {:?}", err),
-            Ok(OpStep::Continue) => (),
-            Ok(OpStep::Return(v)) => {
-                println!("Return {:?}", v);
-                break;
-            }
-            Ok(OpStep::Revert(v)) => {
-                println!("Revert {:?}", v);
-                break;
-            }
-        }
-    }
-}
-
-pub fn next<DB: Database>(ctx: &mut Runtime<DB>) -> OpResult {
+fn next<DB: Database>(ctx: &mut Runtime<DB>) -> OpResult {
     match ctx.code[ctx.pc] {
         0x00 => handle_0x00_stop(ctx),
         0x01 => handle_0x01_add(ctx),
@@ -350,5 +314,32 @@ pub fn next<DB: Database>(ctx: &mut Runtime<DB>) -> OpResult {
         0xf3 => handle_0xf3_return(ctx),
         0xfd => handle_0xfd_revert(ctx),
         opcode => Err(Error::InvalidOpcode(opcode)),
+    }
+}
+
+pub fn run<'a, 'b, DB: Database>(
+    code: &'a [u8],
+    state: &'b mut State<DB>,
+    data: &'b [u8],
+    caller: Address,
+) -> RunResult {
+    let mut ctx = Runtime {
+        code,
+        state,
+        data,
+        caller,
+        pc: 0,
+        mem: Mem::new(),
+        stack: Stack::new(),
+    };
+    loop {
+        if ctx.pc >= ctx.code.len() {
+            return Err(Error::CodeOutOfBound);
+        }
+        match next(&mut ctx) {
+            Err(err) => return Err(err),
+            Ok(OpStep::Continue) => (),
+            Ok(OpStep::Return(v)) => return Ok(v),
+        }
     }
 }
