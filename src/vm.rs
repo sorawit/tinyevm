@@ -1,7 +1,7 @@
 use crate::database::Database;
 use crate::runtime;
 use crate::state::State;
-use ethereum_types::Address;
+use crate::types::{Env, RunResult};
 
 pub struct VM<'a, DB> {
     code: &'a [u8],
@@ -16,15 +16,18 @@ impl<'a, DB: Database> VM<'a, DB> {
         }
     }
 
-    pub fn run(&mut self, caller: Address, data: &[u8]) {
-        println!(
-            "{:?}",
-            runtime::run(self.code, &mut self.state, data, caller)
-        );
+    pub fn run(&mut self, env: &Env, data: &[u8]) -> RunResult {
+        let res = runtime::run(self.code, &mut self.state, data, env);
+        match res {
+            Ok(_) => self.state.commit(),
+            Err(_) => self.state.rollback(),
+        }
+        res
     }
 
-    pub fn call(&mut self, caller: Address, data: &[u8]) {
-        let _ = runtime::run(self.code, &mut self.state, data, caller);
+    pub fn call(&mut self, env: &Env, data: &[u8]) -> RunResult {
+        let res = runtime::run(self.code, &mut self.state, data, env);
         self.state.rollback();
+        res
     }
 }

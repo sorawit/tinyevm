@@ -2,7 +2,7 @@ use crate::database::Database;
 use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;
-use crate::types::{Error, OpResult, OpStep, RunResult};
+use crate::types::{Env, Error, OpResult, OpStep, RunResult};
 use ethereum_types::{Address, H256, U256};
 use sha3::{Digest, Keccak256};
 
@@ -10,7 +10,7 @@ struct Context<'a, 'b, DB> {
     code: &'a [u8],
     state: &'b mut State<DB>,
     data: &'b [u8],
-    caller: Address,
+    env: &'b Env,
     pc: usize,
     mem: Mem,
     stack: Stack,
@@ -100,7 +100,7 @@ fn handle_0x20_keccak256<DB>(ctx: &mut Context<DB>) -> OpResult {
 }
 
 fn handle_0x33_caller<DB>(ctx: &mut Context<DB>) -> OpResult {
-    ctx.stack.push_h256(ctx.caller.into())?;
+    ctx.stack.push_h256(ctx.env.caller.into())?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -317,13 +317,13 @@ pub fn run<'a, 'b, DB: Database>(
     code: &'a [u8],
     state: &'b mut State<DB>,
     data: &'b [u8],
-    caller: Address,
+    env: &'b Env,
 ) -> RunResult {
     let mut ctx = Context {
         code,
         state,
         data,
-        caller,
+        env,
         pc: 0,
         mem: Mem::new(),
         stack: Stack::new(),

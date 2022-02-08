@@ -1,3 +1,13 @@
+use ethereum_types::{Address, U256};
+
+#[derive(Debug)]
+pub struct Env {
+    pub caller: Address,
+    pub timestamp: U256,
+    pub number: U256,
+    pub chainid: U256,
+}
+
 #[derive(PartialEq, Debug)]
 pub enum Error {
     Revert(Vec<u8>),
