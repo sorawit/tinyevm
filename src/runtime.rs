@@ -7,7 +7,7 @@ use crate::stack::Stack;
 use crate::state::State;
 use crate::types::{Error, OpResult, OpStep, RunResult};
 
-struct Runtime<'a, 'b, DB> {
+struct Context<'a, 'b, DB> {
     code: &'a [u8],
     state: &'b mut State<DB>,
     data: &'b [u8],
@@ -17,11 +17,11 @@ struct Runtime<'a, 'b, DB> {
     stack: Stack,
 }
 
-fn handle_0x00_stop<DB>(_ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x00_stop<DB>(_ctx: &mut Context<DB>) -> OpResult {
     Ok(OpStep::Return(Vec::new()))
 }
 
-fn handle_0x01_add<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x01_add<DB>(ctx: &mut Context<DB>) -> OpResult {
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(lhs + rhs)?;
@@ -29,7 +29,7 @@ fn handle_0x01_add<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x02_mul<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x02_mul<DB>(ctx: &mut Context<DB>) -> OpResult {
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(lhs * rhs)?;
@@ -37,7 +37,7 @@ fn handle_0x02_mul<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x03_sub<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x03_sub<DB>(ctx: &mut Context<DB>) -> OpResult {
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(lhs - rhs)?;
@@ -45,7 +45,7 @@ fn handle_0x03_sub<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x10_lt<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x10_lt<DB>(ctx: &mut Context<DB>) -> OpResult {
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
     ctx.stack.push_usize(if lhs < rhs { 1 } else { 0 })?;
@@ -53,7 +53,7 @@ fn handle_0x10_lt<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x14_eq<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x14_eq<DB>(ctx: &mut Context<DB>) -> OpResult {
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
     ctx.stack.push_usize(if lhs == rhs { 1 } else { 0 })?;
@@ -61,21 +61,21 @@ fn handle_0x14_eq<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x15_iszero<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x15_iszero<DB>(ctx: &mut Context<DB>) -> OpResult {
     let value = ctx.stack.pop_u256()?;
     ctx.stack.push_usize(if value.is_zero() { 1 } else { 0 })?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x19_not<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x19_not<DB>(ctx: &mut Context<DB>) -> OpResult {
     let value = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(!value)?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x1b_shl<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x1b_shl<DB>(ctx: &mut Context<DB>) -> OpResult {
     let shift = ctx.stack.pop_u256()?;
     let value = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(value << shift)?;
@@ -83,7 +83,7 @@ fn handle_0x1b_shl<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x1c_shr<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x1c_shr<DB>(ctx: &mut Context<DB>) -> OpResult {
     let shift = ctx.stack.pop_u256()?;
     let value = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(value >> shift)?;
@@ -91,7 +91,7 @@ fn handle_0x1c_shr<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x20_keccak256<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x20_keccak256<DB>(ctx: &mut Context<DB>) -> OpResult {
     let start = ctx.stack.pop_usize()?;
     let len = ctx.stack.pop_usize()?;
     let res = Keccak256::digest(ctx.mem.mview(start, len)?);
@@ -100,19 +100,19 @@ fn handle_0x20_keccak256<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x33_caller<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x33_caller<DB>(ctx: &mut Context<DB>) -> OpResult {
     ctx.stack.push_h256(ctx.caller.into())?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x34_callvalue<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x34_callvalue<DB>(ctx: &mut Context<DB>) -> OpResult {
     ctx.stack.push_usize(0)?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x35_calldataload<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x35_calldataload<DB>(ctx: &mut Context<DB>) -> OpResult {
     let loc = ctx.stack.pop_usize()?;
     // TODO: Make it better
     let mut rawdata = [0u8; 32];
@@ -126,26 +126,26 @@ fn handle_0x35_calldataload<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x36_calldatasize<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x36_calldatasize<DB>(ctx: &mut Context<DB>) -> OpResult {
     ctx.stack.push_usize(ctx.data.len())?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x50_pop<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x50_pop<DB>(ctx: &mut Context<DB>) -> OpResult {
     ctx.stack.pop()?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x51_mload<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x51_mload<DB>(ctx: &mut Context<DB>) -> OpResult {
     let key = ctx.stack.pop_usize()?;
     ctx.stack.push_u256(ctx.mem.mload(key)?)?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x52_mstore<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x52_mstore<DB>(ctx: &mut Context<DB>) -> OpResult {
     let key = ctx.stack.pop_usize()?;
     let value = ctx.stack.pop_u256()?;
     ctx.mem.mstore(key, value)?;
@@ -153,14 +153,14 @@ fn handle_0x52_mstore<DB>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x54_sload<DB: Database>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x54_sload<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
     let key = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(ctx.state.load(key))?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x55_sstore<DB: Database>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x55_sstore<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
     let key = ctx.stack.pop_u256()?;
     let value = ctx.stack.pop_u256()?;
     ctx.state.store(key, value);
@@ -168,25 +168,25 @@ fn handle_0x55_sstore<DB: Database>(ctx: &mut Runtime<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
-fn handle_0x56_jump<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x56_jump<DB>(ctx: &mut Context<DB>) -> OpResult {
     let loc = ctx.stack.pop_usize()?;
     ctx.pc = loc;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x57_jumpi<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x57_jumpi<DB>(ctx: &mut Context<DB>) -> OpResult {
     let loc = ctx.stack.pop_usize()?;
     let cond = ctx.stack.pop_u256()?;
     ctx.pc = if cond.is_zero() { ctx.pc + 1 } else { loc };
     Ok(OpStep::Continue)
 }
 
-fn handle_0x5b_jumpdest<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x5b_jumpdest<DB>(ctx: &mut Context<DB>) -> OpResult {
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x60_push<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x60_push<DB, const N: usize>(ctx: &mut Context<DB>) -> OpResult {
     if N < ctx.code.len() - ctx.pc {
         let slice = &ctx.code[ctx.pc + 1..ctx.pc + N + 1];
         let value = U256::from_big_endian(slice);
@@ -198,31 +198,31 @@ fn handle_0x60_push<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
     }
 }
 
-fn handle_0x80_dup<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x80_dup<DB, const N: usize>(ctx: &mut Context<DB>) -> OpResult {
     ctx.stack.dup::<N>()?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0x90_swap<DB, const N: usize>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0x90_swap<DB, const N: usize>(ctx: &mut Context<DB>) -> OpResult {
     ctx.stack.swap::<N>()?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
 
-fn handle_0xf3_return<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0xf3_return<DB>(ctx: &mut Context<DB>) -> OpResult {
     let start = ctx.stack.pop_usize()?;
     let len = ctx.stack.pop_usize()?;
     Ok(OpStep::Return(ctx.mem.mview(start, len)?.to_vec()))
 }
 
-fn handle_0xfd_revert<DB>(ctx: &mut Runtime<DB>) -> OpResult {
+fn handle_0xfd_revert<DB>(ctx: &mut Context<DB>) -> OpResult {
     let start = ctx.stack.pop_usize()?;
     let len = ctx.stack.pop_usize()?;
     Err(Error::Revert(ctx.mem.mview(start, len)?.to_vec()))
 }
 
-fn next<DB: Database>(ctx: &mut Runtime<DB>) -> OpResult {
+fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
     match ctx.code[ctx.pc] {
         0x00 => handle_0x00_stop(ctx),
         0x01 => handle_0x01_add(ctx),
@@ -323,7 +323,7 @@ pub fn run<'a, 'b, DB: Database>(
     data: &'b [u8],
     caller: Address,
 ) -> RunResult {
-    let mut ctx = Runtime {
+    let mut ctx = Context {
         code,
         state,
         data,
