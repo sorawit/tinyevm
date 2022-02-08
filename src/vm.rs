@@ -1,5 +1,5 @@
 use crate::database::Database;
-use crate::runtime::Runtime;
+use crate::runtime;
 use crate::state::State;
 use ethereum_types::Address;
 
@@ -17,8 +17,6 @@ impl<'a, DB: Database> VM<'a, DB> {
     }
 
     pub fn run(&mut self, caller: Address, data: &[u8]) {
-        let mut runtime =
-            Runtime::new(self.code, &mut self.state, data, caller);
-        runtime.run()
+        runtime::run(self.code, &mut self.state, data, caller);
     }
 }

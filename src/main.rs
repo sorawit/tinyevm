@@ -1,10 +1,10 @@
-pub mod database;
-pub mod error;
-pub mod mem;
-pub mod runtime;
-pub mod stack;
-pub mod state;
-pub mod vm;
+mod database;
+mod error;
+mod mem;
+mod runtime;
+mod stack;
+mod state;
+mod vm;
 
 use ethereum_types::Address;
 
