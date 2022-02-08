@@ -1,11 +1,10 @@
-use ethereum_types::{Address, H256, U256};
-use sha3::{Digest, Keccak256};
-
 use crate::database::Database;
 use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;
 use crate::types::{Error, OpResult, OpStep, RunResult};
+use ethereum_types::{Address, H256, U256};
+use sha3::{Digest, Keccak256};
 
 struct Context<'a, 'b, DB> {
     code: &'a [u8],
@@ -114,12 +113,9 @@ fn handle_0x34_callvalue<DB>(ctx: &mut Context<DB>) -> OpResult {
 
 fn handle_0x35_calldataload<DB>(ctx: &mut Context<DB>) -> OpResult {
     let loc = ctx.stack.pop_usize()?;
-    // TODO: Make it better
     let mut rawdata = [0u8; 32];
-    for idx in 0..32 {
-        if loc + idx < ctx.data.len() {
-            rawdata[idx] = ctx.data[loc + idx];
-        }
+    for idx in 0..(usize::min(32, ctx.data.len() - loc)) {
+        rawdata[idx] = ctx.data[loc + idx];
     }
     ctx.stack.push_u256(U256::from_big_endian(&rawdata))?;
     ctx.pc += 1;
