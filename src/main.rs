@@ -30,6 +30,6 @@ fn main() {
     let data = hex::decode("f6315ea4").unwrap();
     println!("{:?}", vm.run(&env, &data));
     let data = hex::decode("0c55699c").unwrap();
-    println!("{:?}", vm.run(&env, &data));
+    println!("{:?}", vm.call(&env, &data));
     println!("Done!");
 }

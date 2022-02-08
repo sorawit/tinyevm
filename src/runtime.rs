@@ -3,7 +3,7 @@ use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;
 use crate::types::{Env, Error, OpResult, OpStep, RunResult};
-use ethereum_types::{Address, H256, U256};
+use ethereum_types::{H256, U256};
 use sha3::{Digest, Keccak256};
 
 struct Context<'a, 'b, DB> {
@@ -128,6 +128,24 @@ fn handle_0x36_calldatasize<DB>(ctx: &mut Context<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x42_timestamp<DB>(ctx: &mut Context<DB>) -> OpResult {
+    ctx.stack.push_u256(ctx.env.timestamp)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x43_number<DB>(ctx: &mut Context<DB>) -> OpResult {
+    ctx.stack.push_u256(ctx.env.number)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x46_chainid<DB>(ctx: &mut Context<DB>) -> OpResult {
+    ctx.stack.push_u256(ctx.env.chainid)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x50_pop<DB>(ctx: &mut Context<DB>) -> OpResult {
     ctx.stack.pop()?;
     ctx.pc += 1;
@@ -235,6 +253,9 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x34 => handle_0x34_callvalue(ctx),
         0x35 => handle_0x35_calldataload(ctx),
         0x36 => handle_0x36_calldatasize(ctx),
+        0x42 => handle_0x42_timestamp(ctx),
+        0x43 => handle_0x43_number(ctx),
+        0x46 => handle_0x46_chainid(ctx),
         0x50 => handle_0x50_pop(ctx),
         0x51 => handle_0x51_mload(ctx),
         0x52 => handle_0x52_mstore(ctx),
