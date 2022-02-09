@@ -3,7 +3,7 @@ use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;
 use crate::types::{Env, Error, OpResult, OpStep, RunResult};
-use ethereum_types::{H256, U256};
+use ethereum_types::{H256, U256, U512};
 use sha3::{Digest, Keccak256};
 
 struct Context<'a, 'b, DB> {
@@ -48,6 +48,43 @@ fn handle_0x04_div<DB>(ctx: &mut Context<DB>) -> OpResult {
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(lhs / rhs)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x06_mod<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack
+        .push_u256(lhs.checked_rem(rhs).unwrap_or(0.into()))?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x08_addmod<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs: U512 = ctx.stack.pop_u256()?.into();
+    let rhs: U512 = ctx.stack.pop_u256()?.into();
+    let base: U512 = ctx.stack.pop_u256()?.into();
+    let res = (lhs + rhs).checked_rem(base).unwrap_or(U512::zero());
+    ctx.stack.push_u256(res.try_into().unwrap())?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x09_mulmod<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs: U512 = ctx.stack.pop_u256()?.into();
+    let rhs: U512 = ctx.stack.pop_u256()?.into();
+    let base: U512 = ctx.stack.pop_u256()?.into();
+    let res = (lhs + rhs).checked_rem(base).unwrap_or(U512::zero());
+    ctx.stack.push_u256(res.try_into().unwrap())?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x0a_exp<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let base = ctx.stack.pop_u256()?;
+    let exp = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(base.overflowing_pow(exp).0)?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -303,11 +340,11 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x03 => handle_0x03_sub(ctx),
         0x04 => handle_0x04_div(ctx),
         // 0x05 => handle_0x05_sdiv(ctx),
-        // 0x06 => handle_0x06_mod(ctx),
+        0x06 => handle_0x06_mod(ctx),
         // 0x07 => handle_0x07_smod(ctx),
-        // 0x08 => handle_0x08_addmod(ctx),
-        // 0x09 => handle_0x09_mulmod(ctx),
-        // 0x0a => handle_0x0a_exp(ctx),
+        0x08 => handle_0x08_addmod(ctx),
+        0x09 => handle_0x09_mulmod(ctx),
+        0x0a => handle_0x0a_exp(ctx),
         // 0x0b => handle_0x0b_signextended(ctx),
         0x10 => handle_0x10_lt(ctx),
         0x11 => handle_0x11_gt(ctx),
