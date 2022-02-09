@@ -26,9 +26,18 @@ impl Mem {
         Ok(())
     }
 
-    /// Stores the given value to the location at the specified key.
+    /// Stores the given u8 value to the location at the specified key.
+    pub fn mstores(&mut self, key: usize, value: u8) -> Result<(), Error> {
+        if key >= MAX_SIZE {
+            return Err(Error::MemoryOverflow);
+        }
+        self.resize_for(key)?;
+        Ok(self.0[key] = value)
+    }
+
+    /// Stores the given 256 value to the location at the specified key.
     pub fn mstore(&mut self, key: usize, value: U256) -> Result<(), Error> {
-        if key > MAX_SIZE - WORD_SIZE {
+        if key >= MAX_SIZE - WORD_SIZE {
             return Err(Error::MemoryOverflow);
         }
         self.resize_for(key + WORD_SIZE)?;
@@ -37,7 +46,7 @@ impl Mem {
 
     /// Loads the value from the location at the specified key.
     pub fn mload(&mut self, key: usize) -> Result<U256, Error> {
-        if key > MAX_SIZE - WORD_SIZE {
+        if key >= MAX_SIZE - WORD_SIZE {
             return Err(Error::MemoryOverflow);
         }
         self.resize_for(key + WORD_SIZE)?;

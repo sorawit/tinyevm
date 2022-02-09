@@ -253,6 +253,14 @@ fn handle_0x52_mstore<DB>(ctx: &mut Context<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x53_mstores<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let key = ctx.stack.pop_usize()?;
+    let value = ctx.stack.pop_u256()?;
+    ctx.mem.mstores(key, value.byte(31))?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x54_sload<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
     let key = ctx.stack.pop_u256()?;
     ctx.stack.push_u256(ctx.state.load(key))?;
@@ -384,7 +392,7 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x50 => handle_0x50_pop(ctx),
         0x51 => handle_0x51_mload(ctx),
         0x52 => handle_0x52_mstore(ctx),
-        // 0x53 => handle_0x53_mstores(ctx),
+        0x53 => handle_0x53_mstores(ctx),
         0x54 => handle_0x54_sload(ctx),
         0x55 => handle_0x55_sstore(ctx),
         0x56 => handle_0x56_jump(ctx),
