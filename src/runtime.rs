@@ -44,7 +44,32 @@ fn handle_0x03_sub<DB>(ctx: &mut Context<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x04_div<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(lhs / rhs)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x10_lt<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack.push_usize(if lhs < rhs { 1 } else { 0 })?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x11_gt<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack.push_usize(if lhs > rhs { 1 } else { 0 })?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x12_slt<DB>(ctx: &mut Context<DB>) -> OpResult {
+    // FIXME
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
     ctx.stack.push_usize(if lhs < rhs { 1 } else { 0 })?;
@@ -63,6 +88,30 @@ fn handle_0x14_eq<DB>(ctx: &mut Context<DB>) -> OpResult {
 fn handle_0x15_iszero<DB>(ctx: &mut Context<DB>) -> OpResult {
     let value = ctx.stack.pop_u256()?;
     ctx.stack.push_usize(if value.is_zero() { 1 } else { 0 })?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x16_and<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(lhs & rhs)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x17_or<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(lhs | rhs)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x18_xor<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(lhs ^ rhs)?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -224,6 +273,16 @@ fn handle_0x90_swap<DB, const N: usize>(ctx: &mut Context<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0xa2_log2<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let start = ctx.stack.pop_usize()?;
+    let len = ctx.stack.pop_usize()?;
+    let topic0 = ctx.stack.pop_u256()?;
+    let topic1 = ctx.stack.pop_u256()?;
+    println!("ez {} {} {} {}", start, len, topic0, topic1);
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0xf3_return<DB>(ctx: &mut Context<DB>) -> OpResult {
     let start = ctx.stack.pop_usize()?;
     let len = ctx.stack.pop_usize()?;
@@ -242,7 +301,7 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x01 => handle_0x01_add(ctx),
         0x02 => handle_0x02_mul(ctx),
         0x03 => handle_0x03_sub(ctx),
-        // 0x04 => handle_0x04_div(ctx),
+        0x04 => handle_0x04_div(ctx),
         // 0x05 => handle_0x05_sdiv(ctx),
         // 0x06 => handle_0x06_mod(ctx),
         // 0x07 => handle_0x07_smod(ctx),
@@ -251,14 +310,14 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         // 0x0a => handle_0x0a_exp(ctx),
         // 0x0b => handle_0x0b_signextended(ctx),
         0x10 => handle_0x10_lt(ctx),
-        // 0x11 => handle_0x11_gt(ctx),
-        // 0x12 => handle_0x12_slt(ctx),
+        0x11 => handle_0x11_gt(ctx),
+        0x12 => handle_0x12_slt(ctx),
         // 0x13 => handle_0x13_sgt(ctx),
         0x14 => handle_0x14_eq(ctx),
         0x15 => handle_0x15_iszero(ctx),
-        // 0x16 => handle_0x16_and(ctx),
-        // 0x17 => handle_0x17_or(ctx),
-        // 0x18 => handle_0x18_xor(ctx),
+        0x16 => handle_0x16_and(ctx),
+        0x17 => handle_0x17_or(ctx),
+        0x18 => handle_0x18_xor(ctx),
         0x19 => handle_0x19_not(ctx),
         // 0x1a => handle_0x1a_byte(ctx),
         0x1b => handle_0x1b_shl(ctx),
@@ -350,7 +409,7 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x9f => handle_0x90_swap::<_, 16>(ctx),
         // 0xa0 => handle_0xa0_log0(ctx),
         // 0xa1 => handle_0xa1_log1(ctx),
-        // 0xa2 => handle_0xa2_log2(ctx),
+        0xa2 => handle_0xa2_log2(ctx),
         // 0xa3 => handle_0xa3_log3(ctx),
         // 0xa4 => handle_0xa4_log4(ctx),
         0xf3 => handle_0xf3_return(ctx),
