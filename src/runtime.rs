@@ -55,8 +55,8 @@ fn handle_0x04_div<DB>(ctx: &mut Context<DB>) -> OpResult {
 fn handle_0x06_mod<DB>(ctx: &mut Context<DB>) -> OpResult {
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
-    ctx.stack
-        .push_u256(lhs.checked_rem(rhs).unwrap_or(0.into()))?;
+    let res = lhs.checked_rem(rhs).unwrap_or(0.into());
+    ctx.stack.push_u256(res)?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -281,6 +281,12 @@ fn handle_0x57_jumpi<DB>(ctx: &mut Context<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x58_pc<DB>(ctx: &mut Context<DB>) -> OpResult {
+    ctx.stack.push_usize(ctx.pc)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x5b_jumpdest<DB>(ctx: &mut Context<DB>) -> OpResult {
     ctx.pc += 1;
     Ok(OpStep::Continue)
@@ -377,7 +383,7 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x55 => handle_0x55_sstore(ctx),
         0x56 => handle_0x56_jump(ctx),
         0x57 => handle_0x57_jumpi(ctx),
-        // 0x58 => handle_0x58_pc(ctx),
+        0x58 => handle_0x58_pc(ctx),
         // 0x59 => handle_0x59_msize(ctx),
         0x5b => handle_0x5b_jumpdest(ctx),
         0x60 => handle_0x60_push::<_, 1>(ctx),
