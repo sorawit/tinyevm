@@ -12,28 +12,35 @@ impl Mem {
         Self(Vec::with_capacity(MAX_SIZE))
     }
 
+    /// Returns the size of the current memory.
+    pub fn size(&self) -> usize {
+        return self.0.len();
+    }
+
     /// Resizes the memory buffer to allow accessing the given location.
     pub fn resize_for(&mut self, key: usize) -> Result<(), Error> {
-        if key > MAX_SIZE - WORD_SIZE {
-            Err(Error::MemoryOverflow)
-        } else {
-            let bound = key + WORD_SIZE;
-            if bound > self.0.len() {
-                self.0.resize(bound, 0);
-            }
-            Ok(())
+        let bound = (((key - 1) / 32) + 1) * 32;
+        if bound > self.0.len() {
+            self.0.resize(bound, 0);
         }
+        Ok(())
     }
 
     /// Stores the given value to the location at the specified key.
     pub fn mstore(&mut self, key: usize, value: U256) -> Result<(), Error> {
-        self.resize_for(key)?;
+        if key > MAX_SIZE - WORD_SIZE {
+            return Err(Error::MemoryOverflow);
+        }
+        self.resize_for(key + WORD_SIZE)?;
         Ok(value.to_big_endian(&mut self.0[key..key + WORD_SIZE]))
     }
 
     /// Loads the value from the location at the specified key.
     pub fn mload(&mut self, key: usize) -> Result<U256, Error> {
-        self.resize_for(key)?;
+        if key > MAX_SIZE - WORD_SIZE {
+            return Err(Error::MemoryOverflow);
+        }
+        self.resize_for(key + WORD_SIZE)?;
         let slice = &self.0[key..key + WORD_SIZE];
         Ok(U256::from_big_endian(slice))
     }
@@ -67,5 +74,6 @@ mod tests {
         mem.mstore(1000, 10.into()).unwrap();
         assert_eq!(mem.mload(1000), Ok(10.into()));
         assert_eq!(mem.mload(1001), Ok(2560.into()));
+        assert_eq!(mem.size(), 1056);
     }
 }
