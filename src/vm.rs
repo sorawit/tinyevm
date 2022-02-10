@@ -1,4 +1,4 @@
-use crate::database::Database;
+use crate::db::Database;
 use crate::runtime;
 use crate::state::State;
 use crate::types::{Env, RunResult};

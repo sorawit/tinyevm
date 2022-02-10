@@ -1,4 +1,4 @@
-use crate::database::Database;
+use crate::db::Database;
 use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;

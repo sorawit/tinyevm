@@ -1,10 +1,11 @@
-use crate::database::Database;
+use crate::db::Database;
 use ethereum_types::U256;
 use std::collections::HashMap;
 
 pub struct State<DB> {
     db: DB,
-    cache: HashMap<U256, U256>, // TODO: More optimization?
+    // TODO: More optimization? don't need to flush on every commit
+    cache: HashMap<U256, U256>,
 }
 
 impl<DB: Database> State<DB> {
