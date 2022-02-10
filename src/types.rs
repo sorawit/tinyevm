@@ -1,4 +1,10 @@
-use ethereum_types::{Address, U256};
+use ethereum_types::{Address, H256, U256};
+
+#[derive(Debug)]
+pub struct Log {
+    pub topics: Vec<H256>,
+    pub data: Vec<u8>,
+}
 
 #[derive(Debug)]
 pub struct Env {
@@ -27,4 +33,4 @@ pub enum OpStep {
 }
 
 pub type OpResult = Result<OpStep, Error>;
-pub type RunResult = Result<Vec<u8>, Error>;
+pub type RunResult = Result<(Vec<u8>, Vec<Log>), Error>;

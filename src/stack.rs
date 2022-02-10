@@ -45,6 +45,11 @@ impl Stack {
         }
     }
 
+    /// Pops a value from the stack as a h256.
+    pub fn pop_h256(&mut self) -> Result<H256, Error> {
+        self.pop_u256().map(|v| H256::from_uint(&v))
+    }
+
     /// Pops a value from the stack as a u256.
     pub fn pop_u256(&mut self) -> Result<U256, Error> {
         self.0.pop().ok_or(Error::StackUnderflow)

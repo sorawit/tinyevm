@@ -2,7 +2,7 @@ use crate::database::Database;
 use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;
-use crate::types::{Env, Error, OpResult, OpStep, RunResult};
+use crate::types::{Env, Error, Log, OpResult, OpStep, RunResult};
 use ethereum_types::{H256, U256, U512};
 use sha3::{Digest, Keccak256};
 
@@ -14,6 +14,7 @@ struct Context<'a, 'b, DB> {
     pc: usize,
     mem: Mem,
     stack: Stack,
+    logs: Vec<Log>,
 }
 
 fn handle_0x00_stop<DB>(_ctx: &mut Context<DB>) -> OpResult {
@@ -330,12 +331,67 @@ fn handle_0x90_swap<DB, const N: usize>(ctx: &mut Context<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0xa0_log0<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let start = ctx.stack.pop_usize()?;
+    let len = ctx.stack.pop_usize()?;
+    ctx.logs.push(Log {
+        topics: vec![],
+        data: ctx.mem.mview(start, len)?.into(),
+    });
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0xa1_log1<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let start = ctx.stack.pop_usize()?;
+    let len = ctx.stack.pop_usize()?;
+    let topic0 = ctx.stack.pop_h256()?;
+    ctx.logs.push(Log {
+        topics: vec![topic0],
+        data: ctx.mem.mview(start, len)?.into(),
+    });
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0xa2_log2<DB>(ctx: &mut Context<DB>) -> OpResult {
     let start = ctx.stack.pop_usize()?;
     let len = ctx.stack.pop_usize()?;
-    let topic0 = ctx.stack.pop_u256()?;
-    let topic1 = ctx.stack.pop_u256()?;
-    println!("ez {} {} {} {}", start, len, topic0, topic1);
+    let topic0 = ctx.stack.pop_h256()?;
+    let topic1 = ctx.stack.pop_h256()?;
+    ctx.logs.push(Log {
+        topics: vec![topic0, topic1],
+        data: ctx.mem.mview(start, len)?.into(),
+    });
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0xa3_log3<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let start = ctx.stack.pop_usize()?;
+    let len = ctx.stack.pop_usize()?;
+    let topic0 = ctx.stack.pop_h256()?;
+    let topic1 = ctx.stack.pop_h256()?;
+    let topic2 = ctx.stack.pop_h256()?;
+    ctx.logs.push(Log {
+        topics: vec![topic0, topic1, topic2],
+        data: ctx.mem.mview(start, len)?.into(),
+    });
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0xa4_log4<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let start = ctx.stack.pop_usize()?;
+    let len = ctx.stack.pop_usize()?;
+    let topic0 = ctx.stack.pop_h256()?;
+    let topic1 = ctx.stack.pop_h256()?;
+    let topic2 = ctx.stack.pop_h256()?;
+    let topic3 = ctx.stack.pop_h256()?;
+    ctx.logs.push(Log {
+        topics: vec![topic0, topic1, topic2, topic3],
+        data: ctx.mem.mview(start, len)?.into(),
+    });
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -464,11 +520,11 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x9d => handle_0x90_swap::<_, 14>(ctx),
         0x9e => handle_0x90_swap::<_, 15>(ctx),
         0x9f => handle_0x90_swap::<_, 16>(ctx),
-        // 0xa0 => handle_0xa0_log0(ctx),
-        // 0xa1 => handle_0xa1_log1(ctx),
+        0xa0 => handle_0xa0_log0(ctx),
+        0xa1 => handle_0xa1_log1(ctx),
         0xa2 => handle_0xa2_log2(ctx),
-        // 0xa3 => handle_0xa3_log3(ctx),
-        // 0xa4 => handle_0xa4_log4(ctx),
+        0xa3 => handle_0xa3_log3(ctx),
+        0xa4 => handle_0xa4_log4(ctx),
         0xf3 => handle_0xf3_return(ctx),
         0xfd => handle_0xfd_revert(ctx),
         opcode => Err(Error::InvalidOpcode(opcode)),
@@ -489,6 +545,7 @@ pub fn run<'a, 'b, DB: Database>(
         pc: 0,
         mem: Mem::new(),
         stack: Stack::new(),
+        logs: Vec::new(),
     };
     loop {
         if ctx.pc >= ctx.code.len() {
@@ -497,7 +554,7 @@ pub fn run<'a, 'b, DB: Database>(
         match next(&mut ctx) {
             Err(err) => return Err(err),
             Ok(OpStep::Continue) => (),
-            Ok(OpStep::Return(v)) => return Ok(v),
+            Ok(OpStep::Return(v)) => return Ok((v, ctx.logs)),
         }
     }
 }
