@@ -22,11 +22,11 @@ impl Key for MyKey {
     }
 }
 
-pub struct LevelDBDatabase {
+pub struct LevelDB {
     db: database::Database<MyKey>,
 }
 
-impl LevelDBDatabase {
+impl LevelDB {
     /// Creates a new LevelDB file backed database instance.
     pub fn new(path: &path::Path) -> Self {
         let mut options = Options::new();
@@ -37,7 +37,7 @@ impl LevelDBDatabase {
     }
 }
 
-impl Database for LevelDBDatabase {
+impl Database for LevelDB {
     fn get(&self, key: U256) -> U256 {
         match self.db.get(ReadOptions::new(), &MyKey(key)).unwrap() {
             None => 0.into(),
@@ -63,14 +63,14 @@ mod tests {
     #[test]
     fn test_memory_database_empty() {
         let dir = TempDir::new("leveldbtest").unwrap();
-        let db = LevelDBDatabase::new(&dir.path());
+        let db = LevelDB::new(&dir.path());
         assert_eq!(db.get(999.into()), 0.into());
     }
 
     #[test]
     fn test_memory_database_get_set() {
         let dir = TempDir::new("leveldbtest").unwrap();
-        let mut db = LevelDBDatabase::new(&dir.path());
+        let mut db = LevelDB::new(&dir.path());
         db.set(123.into(), 456.into());
         assert_eq!(db.get(123.into()), 456.into());
         assert_eq!(db.get(124.into()), 0.into());

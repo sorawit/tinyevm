@@ -2,18 +2,18 @@ use crate::db::Database;
 use ethereum_types::U256;
 use std::collections::HashMap;
 
-pub struct MemoryDatabase {
+pub struct MemoryDB {
     db: HashMap<U256, U256>,
 }
 
-impl MemoryDatabase {
+impl MemoryDB {
     /// Creates a new in-memory database.
     pub fn new() -> Self {
         Self { db: HashMap::new() }
     }
 }
 
-impl Database for MemoryDatabase {
+impl Database for MemoryDB {
     fn get(&self, key: U256) -> U256 {
         self.db.get(&key).cloned().unwrap_or_default()
     }
@@ -33,13 +33,13 @@ mod tests {
 
     #[test]
     fn test_memory_database_empty() {
-        let db = MemoryDatabase::new();
+        let db = MemoryDB::new();
         assert_eq!(db.get(999.into()), 0.into());
     }
 
     #[test]
     fn test_memory_database_get_set() {
-        let mut db = MemoryDatabase::new();
+        let mut db = MemoryDB::new();
         db.set(123.into(), 456.into());
         assert_eq!(db.get(123.into()), 456.into());
         assert_eq!(db.get(124.into()), 0.into());

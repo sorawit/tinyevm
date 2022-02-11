@@ -44,11 +44,11 @@ impl<DB: Database> State<DB> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::MemoryDatabase;
+    use crate::db::MemoryDB;
 
     #[test]
     fn test_state_load_store() {
-        let mut db = MemoryDatabase::new();
+        let mut db = MemoryDB::new();
         db.set(123.into(), 456.into());
         let mut st = State::new(db);
         assert_eq!(st.load(123.into()), 456.into());
@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn test_state_rollback() {
-        let mut db = MemoryDatabase::new();
+        let mut db = MemoryDB::new();
         db.set(123.into(), 456.into());
         let mut st = State::new(db);
         st.store(123.into(), 457.into());
@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_state_commit() {
-        let mut db = MemoryDatabase::new();
+        let mut db = MemoryDB::new();
         db.set(123.into(), 456.into());
         let mut st = State::new(db);
         st.store(123.into(), 457.into());
