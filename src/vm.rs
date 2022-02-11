@@ -17,8 +17,8 @@ impl<'a, DB: Database> VM<'a, DB> {
     }
 
     /// Runs a transaction and returns the result + updates the state.
-    pub fn run(&mut self, env: &Env, data: &[u8]) -> RunResult {
-        let res = runtime::run(self.code, &mut self.state, data, env);
+    pub fn run(&mut self, env: &Env) -> RunResult {
+        let res = runtime::run(self.code, &mut self.state, env);
         match res {
             Ok(_) => self.state.commit(),
             Err(_) => self.state.rollback(),
@@ -27,8 +27,8 @@ impl<'a, DB: Database> VM<'a, DB> {
     }
 
     /// Runs a transaction and returns the result + discards state changes.
-    pub fn call(&mut self, env: &Env, data: &[u8]) -> RunResult {
-        let res = runtime::run(self.code, &mut self.state, data, env);
+    pub fn call(&mut self, env: &Env) -> RunResult {
+        let res = runtime::run(self.code, &mut self.state, env);
         self.state.rollback();
         res
     }

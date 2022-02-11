@@ -12,6 +12,7 @@ pub struct Env {
     pub timestamp: U256,
     pub number: U256,
     pub chainid: U256,
+    pub calldata: Vec<u8>,
 }
 
 #[derive(PartialEq, Debug)]

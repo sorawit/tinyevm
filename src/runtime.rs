@@ -6,11 +6,10 @@ use crate::types::{Env, Error, Log, OpResult, OpStep, RunResult};
 use ethereum_types::{H256, U256, U512};
 use sha3::{Digest, Keccak256};
 
-struct Context<'a, 'b, DB> {
+struct Context<'a, DB> {
     code: &'a [u8],
-    state: &'b mut State<DB>,
-    data: &'b [u8],
-    env: &'b Env,
+    state: &'a mut State<DB>,
+    env: &'a Env,
     pc: usize,
     mem: Mem,
     stack: Stack,
@@ -201,8 +200,8 @@ fn handle_0x34_callvalue<DB>(ctx: &mut Context<DB>) -> OpResult {
 fn handle_0x35_calldataload<DB>(ctx: &mut Context<DB>) -> OpResult {
     let loc = ctx.stack.pop_usize()?;
     let mut rawdata = [0u8; 32];
-    for idx in 0..(usize::min(32, ctx.data.len() - loc)) {
-        rawdata[idx] = ctx.data[loc + idx];
+    for idx in 0..(usize::min(32, ctx.env.calldata.len() - loc)) {
+        rawdata[idx] = ctx.env.calldata[loc + idx];
     }
     ctx.stack.push_u256(U256::from_big_endian(&rawdata))?;
     ctx.pc += 1;
@@ -210,7 +209,7 @@ fn handle_0x35_calldataload<DB>(ctx: &mut Context<DB>) -> OpResult {
 }
 
 fn handle_0x36_calldatasize<DB>(ctx: &mut Context<DB>) -> OpResult {
-    ctx.stack.push_usize(ctx.data.len())?;
+    ctx.stack.push_usize(ctx.env.calldata.len())?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -534,13 +533,11 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
 pub fn run<'a, 'b, DB: Database>(
     code: &'a [u8],
     state: &'b mut State<DB>,
-    data: &'b [u8],
     env: &'b Env,
 ) -> RunResult {
     let mut ctx = Context {
         code,
         state,
-        data,
         env,
         pc: 0,
         mem: Mem::new(),
