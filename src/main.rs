@@ -1,4 +1,5 @@
 mod db;
+mod io;
 mod mem;
 mod runtime;
 mod stack;
