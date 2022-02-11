@@ -12,3 +12,5 @@ sha3 = "*"
 leveldb = "*"
 db-key = "*"
 tempdir = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
