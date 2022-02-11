@@ -44,7 +44,7 @@ impl<DB: Database> State<DB> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::database::MemoryDatabase;
+    use crate::db::MemoryDatabase;
 
     #[test]
     fn test_state_load_store() {
