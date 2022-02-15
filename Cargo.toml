@@ -14,3 +14,4 @@ db-key = "*"
 tempdir = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
+serde_with = { version = "*", features = ["hex"] }

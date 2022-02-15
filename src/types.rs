@@ -1,4 +1,5 @@
 use ethereum_types::{Address, H256, U256};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct Log {
@@ -6,12 +7,14 @@ pub struct Log {
     pub data: Vec<u8>,
 }
 
-#[derive(Debug)]
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Env {
     pub caller: Address,
     pub timestamp: U256,
     pub number: U256,
     pub chainid: U256,
+    #[serde_as(as = "serde_with::hex::Hex")]
     pub calldata: Vec<u8>,
 }
 
