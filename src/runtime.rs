@@ -1,8 +1,10 @@
 use crate::db::Database;
+use crate::i256;
 use crate::mem::Mem;
 use crate::stack::Stack;
 use crate::state::State;
 use crate::types::{Env, Error, Log, OpResult, OpStep, RunResult};
+use core::cmp::Ordering;
 use ethereum_types::{H256, U256, U512};
 use sha3::{Digest, Keccak256};
 
@@ -52,11 +54,27 @@ fn handle_0x04_div<DB>(ctx: &mut Context<DB>) -> OpResult {
     Ok(OpStep::Continue)
 }
 
+fn handle_0x05_sdiv<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(i256::i256_div(lhs, rhs))?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
 fn handle_0x06_mod<DB>(ctx: &mut Context<DB>) -> OpResult {
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
     let res = lhs.checked_rem(rhs).unwrap_or(0.into());
     ctx.stack.push_u256(res)?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x07_smod<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    ctx.stack.push_u256(i256::i256_mod(lhs, rhs))?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -106,10 +124,19 @@ fn handle_0x11_gt<DB>(ctx: &mut Context<DB>) -> OpResult {
 }
 
 fn handle_0x12_slt<DB>(ctx: &mut Context<DB>) -> OpResult {
-    // FIXME
     let lhs = ctx.stack.pop_u256()?;
     let rhs = ctx.stack.pop_u256()?;
-    ctx.stack.push_usize(if lhs < rhs { 1 } else { 0 })?;
+    let islt = i256::i256_cmp(lhs, rhs) == Ordering::Less;
+    ctx.stack.push_usize(if islt { 1 } else { 0 })?;
+    ctx.pc += 1;
+    Ok(OpStep::Continue)
+}
+
+fn handle_0x13_sgt<DB>(ctx: &mut Context<DB>) -> OpResult {
+    let lhs = ctx.stack.pop_u256()?;
+    let rhs = ctx.stack.pop_u256()?;
+    let isgt = i256::i256_cmp(lhs, rhs) == Ordering::Greater;
+    ctx.stack.push_usize(if isgt { 1 } else { 0 })?;
     ctx.pc += 1;
     Ok(OpStep::Continue)
 }
@@ -414,9 +441,9 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x02 => handle_0x02_mul(ctx),
         0x03 => handle_0x03_sub(ctx),
         0x04 => handle_0x04_div(ctx),
-        // 0x05 => handle_0x05_sdiv(ctx),
+        0x05 => handle_0x05_sdiv(ctx),
         0x06 => handle_0x06_mod(ctx),
-        // 0x07 => handle_0x07_smod(ctx),
+        0x07 => handle_0x07_smod(ctx),
         0x08 => handle_0x08_addmod(ctx),
         0x09 => handle_0x09_mulmod(ctx),
         0x0a => handle_0x0a_exp(ctx),
@@ -424,7 +451,7 @@ fn next<DB: Database>(ctx: &mut Context<DB>) -> OpResult {
         0x10 => handle_0x10_lt(ctx),
         0x11 => handle_0x11_gt(ctx),
         0x12 => handle_0x12_slt(ctx),
-        // 0x13 => handle_0x13_sgt(ctx),
+        0x13 => handle_0x13_sgt(ctx),
         0x14 => handle_0x14_eq(ctx),
         0x15 => handle_0x15_iszero(ctx),
         0x16 => handle_0x16_and(ctx),

@@ -1,4 +1,5 @@
 mod db;
+mod i256;
 mod io;
 mod mem;
 mod runtime;
